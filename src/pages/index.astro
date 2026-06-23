@@ -4,18 +4,29 @@ import Layout from '../layouts/main.astro';
 ---
 
 <Layout title="Aaronson Oracle">
-	<p>Press the 'f' and 'd' keys randomly. As randomly as you can. I'll try to predict which key you'll press next.</p>
-  <p id="avg" class="text-xl">Keep pressing!</p>
-  <p>A rolling mean of my accuracy in predicting what key you'll press. (I'll start predicting once I get a few keypresses from you).</p>
+  <main class="max-w-2xl mx-auto flex flex-col gap-4 p-8">
+    <h1 class="text-xl font-bold w-fit mx-auto">Aaronson Oracle</h1>
+   	<p>Press the 'f' and 'd' keys randomly. As randomly as you can. I'll try to predict which key you'll press next.</p>
+    <p id="avg" class="text-4xl font-bold self-center">Keep pressing!</p>
+    <div class="[&>button]:bg-black/5 [&>button]:hover:bg-black/8 [&>button]:active:bg-black/12 [&>.active]:bg-black/12 [&>button]:border [&>button]:border-black/10 [&>button]:w-16 text-xl [&>button]:p-2 self-center">
+      <button id="btn-f">F</button>
+      <button id="btn-d">D</button>
+    </div>
+    <p>A rolling mean of my accuracy in predicting what key you'll press. (I'll start predicting once I get a few keypresses from you).</p>
 
-  <p>
-	  My last guesses (most recent at top):
-	  <div id ="lastGuesses">
-  </div>
+   	<p>What's going on here? This is an <a class="font-bold hover:border-b" href="https://github.com/elsehow/aaronson-oracle">Aaronson Oracle</a>.</p>
+    <p>My last guesses (most recent at top):</p>
+ 	  <table class="self-center [&_td]:p-1 [&_th]:p-1 text-center [&_td]:first:border-r">
+      <thead>
+        <tr class="border-b">
+          <th class="border-r">Observed</th>
+          <th>Predicted</th>
+        </tr>
+      </thead>
 
-	<p>
-		What's going on here? This is an <a href="https://github.com/elsehow/aaronson-oracle">Aaronson Oracle</a>.
-	</p>
+      <tbody id="lastGuesses" />
+    </table>
+  </main>
 </Layout>
 
 <script>
@@ -27,10 +38,32 @@ import Layout from '../layouts/main.astro';
   var avgEl = document.getElementById('avg')
   var lastGuessesEl = document.getElementById('lastGuesses')
   var pressS = Kefir.stream(emitter => {
-    document.body.addEventListener("keypress", emitter.emit)
-  }).map(it => it.keyCode)
-    .map(String.fromCharCode)
-    .filter(l => (l === 'f' || l === 'd'))
+    const btnF = document.getElementById("btn-f")
+    const btnD = document.getElementById("btn-d")
+
+    document.body.addEventListener("keydown", (e) => {
+      if (e.key === "f") btnF.classList.add("active")
+      if (e.key === "d") btnD.classList.add("active")
+    })
+    document.body.addEventListener("keyup", (e) => {
+      if (e.key === "f") {
+        emitter.emit("f")
+        btnF.classList.remove("active")
+      }
+      if (e.key === "d") {
+        emitter.emit("d")
+        btnD.classList.remove("active")
+      }
+    })
+    btnF.addEventListener("click", () => {
+      emitter.emit("f")
+      btnF.classList.remove("active")
+    })
+    btnD.addEventListener("click", () => {
+      emitter.emit("d")
+      btnD.classList.remove("active")
+    })
+  })
 
   var predictionS = predict(pressS)
   var countS = predictionS.scan(acc => acc+=1, 0)
@@ -39,7 +72,7 @@ import Layout from '../layouts/main.astro';
   var accuracyS = runningMean(goodPredictionS)
 
   accuracyS.onValue(z =>  {
-    avgEl.innerHTML = Math.floor(z * 100) + '%'
+    avgEl.innerHTML = Math.floor(z * 100) + '% predictable'
     return
   })
 
@@ -47,7 +80,7 @@ import Layout from '../layouts/main.astro';
     var guesses = ps.map(p => {
       var correct = p[0]===p[1]
       var color = correct ? "white" : "red"
-      return `<span style="background-color:${color}">predicted: ${p[0]}, observed: ${p[1]}</span><br>`
+      return `<tr style="background-color:${color}"><td>${p[1]}</td><td>${p[0]}</td></tr>`
     }).reverse().join('')
     lastGuessesEl.innerHTML = guesses
   })
